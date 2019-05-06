@@ -12,7 +12,9 @@ use futures_core::future::Future;
 /// [`oneshot::Sender`]: https://rust-lang-nursery.github.io/futures-api-docs/0.3.0-alpha.15/futures_channel/oneshot/struct.Sender.html
 #[derive(Debug)]
 pub struct OnceSender<D> {
+    /// Whether data has already been sent over the channel.
     pub sent: bool,
+    /// Whether the channel has been cancelled.
     pub cancelled: bool,
     sender: Option<Sender<D>>,
 }
@@ -23,8 +25,15 @@ pub struct OnceSender<D> {
 /// [`oneshot::Receiver`]: https://rust-lang-nursery.github.io/futures-api-docs/0.3.0-alpha.15/futures_channel/oneshot/struct.Receiver.html
 #[derive(Debug)]
 pub struct OnceReceiver<D> {
+    /// `Some(D)` if data has been received and `None`
+    /// otherwise.
     pub data: Option<D>,
+    /// Whether data has been received (same as
+    /// `data.is_some()`).
     pub received: bool,
+    /// Whether the channel has been closed.
+    pub closed: bool,
+    /// Whether the channel has been cancelled.
     pub cancelled: bool,
     receiver: Option<Receiver<D>>,
 }
@@ -60,6 +69,7 @@ impl<D> OnceReceiver<D> {
         OnceReceiver {
             data: None,
             received: false,
+            closed: false,
             cancelled: false,
             receiver: Some(receiver),
         }
@@ -67,7 +77,7 @@ impl<D> OnceReceiver<D> {
 
     /// Tries to receive data over the channel, returning
     /// `Some(true)` if it has received some, `Some(false)`
-    /// if the channel has been cancelled or a message
+    /// if the channel has been cancelled, closed or a message
     /// already received and `None` otherwise.
     pub fn try_recv(&mut self) -> Option<bool> {
         if let Some(ref mut receiver) = self.receiver {
@@ -86,6 +96,21 @@ impl<D> OnceReceiver<D> {
             }
         } else {
             Some(false)
+        }
+    }
+
+    /// Tries to close the channel, returning `true` if it
+    /// succeeded and `false` if the channel has already
+    /// been closed, cancelled or if a message has been
+    /// received. On success, the change will be stored.
+    pub fn close(&mut self) -> bool {
+        if let Some(ref mut receiver) = self.receiver {
+            receiver.close();
+            self.receiver = None;
+            self.closed = true;
+            true
+        } else {
+            false
         }
     }
 }

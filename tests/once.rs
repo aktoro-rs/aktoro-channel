@@ -9,6 +9,7 @@ fn works() {
     assert_eq!(recv.try_recv(), None);
     assert!(recv.data.is_none());
     assert!(!recv.received);
+    assert!(!recv.closed);
     assert!(!recv.cancelled);
 
     assert!(send.send(42));
@@ -32,6 +33,7 @@ fn cancel_send() {
     assert_eq!(recv.try_recv(), None);
     assert!(recv.data.is_none());
     assert!(!recv.received);
+    assert!(!recv.closed);
     assert!(!recv.cancelled);
 
     drop(send);
@@ -52,6 +54,7 @@ fn cancel_recv() {
     assert_eq!(recv.try_recv(), None);
     assert!(recv.data.is_none());
     assert!(!recv.received);
+    assert!(!recv.closed);
     assert!(!recv.cancelled);
 
     drop(recv);
@@ -60,4 +63,31 @@ fn cancel_recv() {
     assert!(!send.sent);
     assert!(send.cancelled);
     assert!(!send.send(24));
+}
+
+#[test]
+fn close() {
+    let (mut send, mut recv) = once::<u8>();
+
+    assert!(!send.sent);
+    assert!(!send.cancelled);
+    assert_eq!(recv.try_recv(), None);
+    assert!(recv.data.is_none());
+    assert!(!recv.received);
+    assert!(!recv.closed);
+    assert!(!recv.cancelled);
+
+    assert!(recv.close());
+    assert!(recv.closed);
+    assert!(!recv.close());
+
+    assert!(!send.send(42));
+    assert!(!send.sent);
+    assert!(send.cancelled);
+    assert!(!send.send(24));
+
+    assert_eq!(recv.try_recv(), Some(false));
+    assert!(!recv.received);
+    assert!(recv.closed);
+    assert!(!recv.cancelled);
 }
