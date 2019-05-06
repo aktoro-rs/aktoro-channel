@@ -33,15 +33,20 @@ impl<D> OnceSender<D> {
         }
     }
 
+    /// Sends `data` over the channel, returning `true` if it
+    /// has been successfully sent or `false` if the channel
+    /// has been cancelled or a message already sent over it.
     pub fn send(&mut self, data: D) -> bool {
         if let Some(sender) = self.sender.take() {
             match sender.send(data) {
                 Ok(()) => self.sent = true,
                 Err(_) => self.cancelled = true,
             }
-        }
 
-        self.sent || self.cancelled
+            self.sent
+        } else {
+            false
+        }
     }
 }
 
@@ -55,21 +60,27 @@ impl<D> OnceReceiver<D> {
         }
     }
 
-    pub fn try_recv(&mut self) -> bool {
+    /// Tries to receive data over the channel, returning
+    /// `Some(true)` if it has received some, `Some(false)`
+    /// if the channel has been cancelled or a message
+    /// already received and `None` otherwise.
+    pub fn try_recv(&mut self) -> Option<bool> {
         if let Some(ref mut receiver) = self.receiver {
             match receiver.try_recv() {
                 Ok(Some(data)) => {
                     self.data = Some(data);
                     self.received = true;
+                    return Some(true);
                 }
-                Ok(None) => (),
+                Ok(None) => return None,
                 Err(_) => {
                     self.cancelled = true;
                     self.receiver = None;
+                    return Some(false);
                 }
             }
+        } else {
+            Some(false)
         }
-
-        self.received || self.cancelled
     }
 }
