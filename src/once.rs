@@ -1,22 +1,27 @@
+use std::pin::Pin;
+use std::task::Context;
+use std::task::Poll;
+
 use futures_channel::oneshot::Receiver;
 use futures_channel::oneshot::Sender;
+use futures_core::future::Future;
 
 /// A wrapper around a [`oneshot::Sender`] that doesn't consume
 /// itself when sending data and stores it state after doing so.
 ///
 /// [`oneshot::Sender`]: https://rust-lang-nursery.github.io/futures-api-docs/0.3.0-alpha.15/futures_channel/oneshot/struct.Sender.html
+#[derive(Debug)]
 pub struct OnceSender<D> {
     pub sent: bool,
     pub cancelled: bool,
     sender: Option<Sender<D>>,
 }
 
-/// A wrapper arround a [`oneshot::Receiver`] that doesn't
-/// implement [`Future`] but stores the received data along
-/// with the channel's state.
+/// A wrapper arround a [`oneshot::Receiver`] that stores
+/// the received data along with the channel's state.
 ///
 /// [`oneshot::Receiver`]: https://rust-lang-nursery.github.io/futures-api-docs/0.3.0-alpha.15/futures_channel/oneshot/struct.Receiver.html
-/// [`Future`]: https://doc.rust-lang.org/std/future/trait.Future.html
+#[derive(Debug)]
 pub struct OnceReceiver<D> {
     pub data: Option<D>,
     pub received: bool,
@@ -81,6 +86,21 @@ impl<D> OnceReceiver<D> {
             }
         } else {
             Some(false)
+        }
+    }
+}
+
+impl<D> Unpin for OnceSender<D> {}
+impl<D> Unpin for OnceReceiver<D> {}
+
+impl<D> Future for OnceReceiver<D> {
+    type Output = Result<D, ()>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<D, ()>> {
+        if let Some(ref mut receiver) = self.get_mut().receiver {
+            Pin::new(receiver).poll(cx).map_err(|_| ())
+        } else {
+            Poll::Ready(Err(()))
         }
     }
 }
