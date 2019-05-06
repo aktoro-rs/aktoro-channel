@@ -41,7 +41,7 @@ impl<D> OnceSender<D> {
             }
         }
 
-        self.sent
+        self.sent || self.cancelled
     }
 }
 
@@ -70,6 +70,6 @@ impl<D> OnceReceiver<D> {
             }
         }
 
-        self.received
+        self.received || self.cancelled
     }
 }
