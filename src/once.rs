@@ -6,6 +6,8 @@ use futures_channel::oneshot::Receiver;
 use futures_channel::oneshot::Sender;
 use futures_core::future::Future;
 
+use crate::error::*;
+
 /// A wrapper around a [`oneshot::Sender`] that doesn't consume
 /// itself when sending data and stores it state after doing so.
 ///
@@ -25,9 +27,6 @@ pub struct OnceSender<D> {
 /// [`oneshot::Receiver`]: https://rust-lang-nursery.github.io/futures-api-docs/0.3.0-alpha.15/futures_channel/oneshot/struct.Receiver.html
 #[derive(Debug)]
 pub struct OnceReceiver<D> {
-    /// `Some(D)` if data has been received and `None`
-    /// otherwise.
-    pub data: Option<D>,
     /// Whether data has been received (same as
     /// `data.is_some()`).
     pub received: bool,
@@ -47,19 +46,29 @@ impl<D> OnceSender<D> {
         }
     }
 
-    /// Sends `data` over the channel, returning `true` if it
-    /// has been successfully sent or `false` if the channel
-    /// has been cancelled or a message already sent over it.
-    pub fn send(&mut self, data: D) -> bool {
+    /// Sends `data` over the channel, returning `Ok(())` if it
+    /// has been successfully send or either
+    /// `Err(SendError::Closed)` if the channel has been cancelled
+    /// or `Err(SendError::Full)` if a message has already been
+    /// sent over it.
+    pub fn send(&mut self, data: D) -> Result<(), SendError> {
         if let Some(sender) = self.sender.take() {
             match sender.send(data) {
-                Ok(()) => self.sent = true,
-                Err(_) => self.cancelled = true,
+                Ok(()) => {
+                    self.sent = true;
+                    return Ok(());
+                }
+                Err(_) => {
+                    self.cancelled = true;
+                    return Err(SendError::Closed);
+                }
             }
-
-            self.sent
+        } else if self.sent {
+            Err(SendError::Full)
+        } else if self.cancelled {
+            Err(SendError::Closed)
         } else {
-            false
+            unreachable!();
         }
     }
 }
@@ -67,7 +76,6 @@ impl<D> OnceSender<D> {
 impl<D> OnceReceiver<D> {
     pub(crate) fn new(receiver: Receiver<D>) -> OnceReceiver<D> {
         OnceReceiver {
-            data: None,
             received: false,
             closed: false,
             cancelled: false,
@@ -75,42 +83,41 @@ impl<D> OnceReceiver<D> {
         }
     }
 
-    /// Tries to receive data over the channel, returning
-    /// `Some(true)` if it has received some, `Some(false)`
-    /// if the channel has been cancelled, closed or a message
-    /// already received and `None` otherwise.
-    pub fn try_recv(&mut self) -> Option<bool> {
+    /// Tries to receive a message over the channel, returning
+    /// `Ok(D)` if it has received one and either
+    /// `Err(ReceiveError::Empty)` if it hasn't or
+    /// `Err(ReceiveError::Closed)` if the channel has been
+    /// cancelled or closed.
+    pub fn try_recv(&mut self) -> Result<D, ReceiveError> {
         if let Some(ref mut receiver) = self.receiver {
             match receiver.try_recv() {
                 Ok(Some(data)) => {
-                    self.data = Some(data);
                     self.received = true;
-                    return Some(true);
+                    return Ok(data);
                 }
-                Ok(None) => return None,
+                Ok(None) => return Err(ReceiveError::Empty),
                 Err(_) => {
                     self.cancelled = true;
                     self.receiver = None;
-                    return Some(false);
+                    return Err(ReceiveError::Closed);
                 }
             }
         } else {
-            Some(false)
+            return Err(ReceiveError::Closed);
         }
     }
 
-    /// Tries to close the channel, returning `true` if it
-    /// succeeded and `false` if the channel has already
-    /// been closed, cancelled or if a message has been
-    /// received. On success, the change will be stored.
-    pub fn close(&mut self) -> bool {
+    /// Tries to close the channel, returning `Ok(())` if
+    /// it succeeded or `Err(CloseError::Closed)` it the
+    /// chanenl has already been closed.
+    pub fn close(&mut self) -> Result<(), CloseError> {
         if let Some(ref mut receiver) = self.receiver {
             receiver.close();
             self.receiver = None;
             self.closed = true;
-            true
+            Ok(())
         } else {
-            false
+            Err(CloseError::Closed)
         }
     }
 }
@@ -119,13 +126,15 @@ impl<D> Unpin for OnceSender<D> {}
 impl<D> Unpin for OnceReceiver<D> {}
 
 impl<D> Future for OnceReceiver<D> {
-    type Output = Result<D, ()>;
+    type Output = Result<D, ReceiveError>;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<D, ()>> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<D, ReceiveError>> {
         if let Some(ref mut receiver) = self.get_mut().receiver {
-            Pin::new(receiver).poll(cx).map_err(|_| ())
+            Pin::new(receiver)
+                .poll(cx)
+                .map_err(|_| ReceiveError::Closed)
         } else {
-            Poll::Ready(Err(()))
+            Poll::Ready(Err(ReceiveError::Closed))
         }
     }
 }

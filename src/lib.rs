@@ -1,7 +1,9 @@
 use futures_channel::oneshot;
 
+mod error;
 pub mod once;
 
+pub use error::*;
 pub use once::*;
 
 pub fn once<D>() -> (OnceSender<D>, OnceReceiver<D>) {

@@ -1,4 +1,4 @@
-use aktoro_channel::once;
+use aktoro_channel::*;
 
 #[test]
 fn works() {
@@ -6,22 +6,21 @@ fn works() {
 
     assert!(!send.sent);
     assert!(!send.cancelled);
-    assert_eq!(recv.try_recv(), None);
-    assert!(recv.data.is_none());
+    assert_eq!(recv.try_recv(), Err(ReceiveError::Empty));
     assert!(!recv.received);
     assert!(!recv.closed);
     assert!(!recv.cancelled);
 
-    assert!(send.send(42));
+    assert_eq!(send.send(42), Ok(()));
     assert!(send.sent);
     assert!(!send.cancelled);
-    assert!(!send.send(24));
+    assert_eq!(send.send(24), Err(SendError::Full));
 
-    assert_eq!(recv.try_recv(), Some(true));
-    assert_eq!(recv.data, Some(42));
+    assert_eq!(recv.try_recv(), Ok(42));
     assert!(recv.received);
+    assert!(!recv.closed);
     assert!(!recv.cancelled);
-    assert_eq!(recv.try_recv(), Some(false));
+    assert_eq!(recv.try_recv(), Err(ReceiveError::Closed));
 }
 
 #[test]
@@ -30,19 +29,18 @@ fn cancel_send() {
 
     assert!(!send.sent);
     assert!(!send.cancelled);
-    assert_eq!(recv.try_recv(), None);
-    assert!(recv.data.is_none());
+    assert_eq!(recv.try_recv(), Err(ReceiveError::Empty));
     assert!(!recv.received);
     assert!(!recv.closed);
     assert!(!recv.cancelled);
 
     drop(send);
 
-    assert_eq!(recv.try_recv(), Some(false));
-    assert!(recv.data.is_none());
+    assert_eq!(recv.try_recv(), Err(ReceiveError::Closed));
     assert!(!recv.received);
+    assert!(!recv.closed);
     assert!(recv.cancelled);
-    assert_eq!(recv.try_recv(), Some(false));
+    assert_eq!(recv.try_recv(), Err(ReceiveError::Closed));
 }
 
 #[test]
@@ -51,18 +49,17 @@ fn cancel_recv() {
 
     assert!(!send.sent);
     assert!(!send.cancelled);
-    assert_eq!(recv.try_recv(), None);
-    assert!(recv.data.is_none());
+    assert_eq!(recv.try_recv(), Err(ReceiveError::Empty));
     assert!(!recv.received);
     assert!(!recv.closed);
     assert!(!recv.cancelled);
 
     drop(recv);
 
-    assert!(!send.send(42));
+    assert_eq!(send.send(42), Err(SendError::Closed));
     assert!(!send.sent);
     assert!(send.cancelled);
-    assert!(!send.send(24));
+    assert_eq!(send.send(24), Err(SendError::Closed));
 }
 
 #[test]
@@ -71,22 +68,21 @@ fn close() {
 
     assert!(!send.sent);
     assert!(!send.cancelled);
-    assert_eq!(recv.try_recv(), None);
-    assert!(recv.data.is_none());
+    assert_eq!(recv.try_recv(), Err(ReceiveError::Empty));
     assert!(!recv.received);
     assert!(!recv.closed);
     assert!(!recv.cancelled);
 
-    assert!(recv.close());
+    assert_eq!(recv.close(), Ok(()));
     assert!(recv.closed);
-    assert!(!recv.close());
+    assert_eq!(recv.close(), Err(CloseError::Closed));
 
-    assert!(!send.send(42));
+    assert_eq!(send.send(42), Err(SendError::Closed));
     assert!(!send.sent);
     assert!(send.cancelled);
-    assert!(!send.send(24));
+    assert_eq!(send.send(24), Err(SendError::Closed));
 
-    assert_eq!(recv.try_recv(), Some(false));
+    assert_eq!(recv.try_recv(), Err(ReceiveError::Closed));
     assert!(!recv.received);
     assert!(recv.closed);
     assert!(!recv.cancelled);
