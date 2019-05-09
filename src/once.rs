@@ -51,22 +51,22 @@ impl<D> OnceSender<D> {
     /// `Err(SendError::Closed)` if the channel has been cancelled
     /// or `Err(SendError::Full)` if a message has already been
     /// sent over it.
-    pub fn send(&mut self, data: D) -> Result<(), SendError> {
+    pub fn send(&mut self, data: D) -> Result<(), SendError<D>> {
         if let Some(sender) = self.sender.take() {
             match sender.send(data) {
                 Ok(()) => {
                     self.sent = true;
                     return Ok(());
                 }
-                Err(_) => {
+                Err(data) => {
                     self.cancelled = true;
-                    return Err(SendError::Closed);
+                    return Err(SendError::Closed(data));
                 }
             }
         } else if self.sent {
-            Err(SendError::Full)
+            Err(SendError::Full(data))
         } else if self.cancelled {
-            Err(SendError::Closed)
+            Err(SendError::Closed(data))
         } else {
             unreachable!();
         }

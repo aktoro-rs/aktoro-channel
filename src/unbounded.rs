@@ -26,7 +26,7 @@ pub struct UnboundedSender<D> {
 }
 
 /// A wrapper arround a [`mpsc::UnboundedReceiver`] that
-/// stores it state after try to receive data or closing
+/// stores it state after trying to receive data or closing
 /// the channel.
 ///
 /// [`mpsc::UnboundedReceiver`]: https://rust-lang-nursery.github.io/futures-api-docs/0.3.0-alpha.15/futures/channel/mpsc/struct.UnboundedReceiver.html
@@ -51,23 +51,26 @@ impl<D> UnboundedSender<D> {
     /// `Err(SendError::Disconnected)` if the sender has
     /// disconnected itself from the channel or
     /// `Err(SendError::Closed)` if the channel has been closed.
-    pub fn send(&mut self, data: D) -> Result<(), SendError> {
+    pub fn send(&mut self, data: D) -> Result<(), SendError<D>> {
         if self.disconnected {
-            return Err(SendError::Disconnected);
+            return Err(SendError::Disconnected(data));
         } else if self.closed {
-            return Err(SendError::Closed);
+            return Err(SendError::Closed(data));
         } else if self.sender.is_closed() {
             self.closed = true;
-            return Err(SendError::Closed);
+            return Err(SendError::Closed(data));
         }
 
         match self.sender.unbounded_send(data) {
             Ok(()) => Ok(()),
-            Err(ref err) if err.is_disconnected() => {
-                self.closed = true;
-                Err(SendError::Closed)
+            Err(err) => {
+                if err.is_disconnected() {
+                    self.closed = true;
+                    Err(SendError::Closed(err.into_inner()))
+                } else {
+                    unreachable!();
+                }
             }
-            _ => unreachable!(),
         }
     }
 
@@ -161,60 +164,63 @@ impl<D> UnboundedReceiver<D> {
 impl<D> Unpin for UnboundedReceiver<D> {}
 
 impl<D> Sink<D> for UnboundedSender<D> {
-    type SinkError = SendError;
+    // FIXME: -`()` +`D` (the issue being that `poll_ready`,
+    //   `poll_flush` and `poll_close` can't return `D` since
+    //   they don't get any data in the first place).
+    type SinkError = SendError<()>;
 
-    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), SendError>> {
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), SendError<()>>> {
         let receiver = self.get_mut();
         Pin::new(&mut receiver.sender).poll_ready(cx).map_err(|_| {
             if receiver.disconnected {
-                SendError::Disconnected
+                SendError::Disconnected(())
             } else if receiver.closed {
-                SendError::Closed
+                SendError::Closed(())
             } else {
                 receiver.closed = true;
-                SendError::Closed
+                SendError::Closed(())
             }
         })
     }
 
-    fn start_send(self: Pin<&mut Self>, msg: D) -> Result<(), SendError> {
+    fn start_send(self: Pin<&mut Self>, msg: D) -> Result<(), SendError<()>> {
         let receiver = self.get_mut();
         Pin::new(&mut receiver.sender).start_send(msg).map_err(|_| {
             if receiver.disconnected {
-                SendError::Disconnected
+                SendError::Disconnected(())
             } else if receiver.closed {
-                SendError::Closed
+                SendError::Closed(())
             } else {
                 receiver.closed = true;
-                SendError::Closed
+                SendError::Closed(())
             }
         })
     }
 
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), SendError>> {
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), SendError<()>>> {
         let receiver = self.get_mut();
         Pin::new(&mut receiver.sender).poll_flush(cx).map_err(|_| {
             if receiver.disconnected {
-                SendError::Disconnected
+                SendError::Disconnected(())
             } else if receiver.closed {
-                SendError::Closed
+                SendError::Closed(())
             } else {
                 receiver.closed = true;
-                SendError::Closed
+                SendError::Closed(())
             }
         })
     }
 
-    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), SendError>> {
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), SendError<()>>> {
         let receiver = self.get_mut();
         Pin::new(&mut receiver.sender).poll_close(cx).map_err(|_| {
             if receiver.disconnected {
-                SendError::Disconnected
+                SendError::Disconnected(())
             } else if receiver.closed {
-                SendError::Closed
+                SendError::Closed(())
             } else {
                 receiver.closed = true;
-                SendError::Closed
+                SendError::Closed(())
             }
         })
     }

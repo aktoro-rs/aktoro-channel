@@ -1,8 +1,8 @@
 #[derive(PartialEq, Eq, Debug)]
-pub enum SendError {
-    Full,
-    Disconnected,
-    Closed,
+pub enum SendError<D> {
+    Full(D),
+    Disconnected(D),
+    Closed(D),
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -24,17 +24,45 @@ pub enum CloseError {
     Closed,
 }
 
-impl SendError {
+impl<D> SendError<D> {
+    pub fn inner(&self) -> &D {
+        match self {
+            SendError::Full(data) => data,
+            SendError::Disconnected(data) => data,
+            SendError::Closed(data) => data,
+        }
+    }
+
+    pub fn into_inner(self) -> D {
+        match self {
+            SendError::Full(data) => data,
+            SendError::Disconnected(data) => data,
+            SendError::Closed(data) => data,
+        }
+    }
+
     pub fn is_full(&self) -> bool {
-        *self == SendError::Full
+        if let SendError::Full(_) = self {
+            true
+        } else {
+            false
+        }
     }
 
     pub fn is_disconnected(&self) -> bool {
-        *self == SendError::Disconnected
+        if let SendError::Disconnected(_) = self {
+            true
+        } else {
+            false
+        }
     }
 
     pub fn is_closed(&self) -> bool {
-        *self == SendError::Closed
+        if let SendError::Closed(_) = self {
+            true
+        } else {
+            false
+        }
     }
 }
 
