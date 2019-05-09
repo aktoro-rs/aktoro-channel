@@ -17,7 +17,10 @@ use crate::error::*;
 /// [`mpsc::UnboundedSender`]: https://rust-lang-nursery.github.io/futures-api-docs/0.3.0-alpha.15/futures/channel/mpsc/struct.UnboundedSender.html
 #[derive(Clone, Debug)]
 pub struct UnboundedSender<D> {
+    /// Whether the channel has been closed.
     pub closed: bool,
+    /// Whether the sender has diconnected itself from the
+    /// channel.
     pub disconnected: bool,
     sender: Sender<D>,
 }
@@ -29,6 +32,7 @@ pub struct UnboundedSender<D> {
 /// [`mpsc::UnboundedReceiver`]: https://rust-lang-nursery.github.io/futures-api-docs/0.3.0-alpha.15/futures/channel/mpsc/struct.UnboundedReceiver.html
 #[derive(Debug)]
 pub struct UnboundedReceiver<D> {
+    /// Whether the channel has been closed.
     pub closed: bool,
     receiver: Option<Receiver<D>>,
 }
