@@ -93,14 +93,14 @@ fn send_ok(data: u8, send: &mut Sender) {
 }
 
 fn send_full(data: u8, send: &mut Sender) {
-    assert_eq!(send.send(data), Err(SendError::Full));
+    assert_eq!(send.send(data), Err(SendError::Full(data)));
     assert!(send.sent);
     assert!(!send.cancelled);
 }
 
 fn send_closed(data: u8, send: &mut Sender) {
     let sent = send.sent;
-    assert_eq!(send.send(data), Err(SendError::Closed));
+    assert_eq!(send.send(data), Err(SendError::Closed(data)));
     assert_eq!(send.sent, sent);
     assert!(send.cancelled);
 }

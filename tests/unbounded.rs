@@ -75,7 +75,7 @@ async fn test() {
 
         assert_eq!(
             await!(SinkExt::send(&mut send, 32)),
-            Err(SendError::Disconnected)
+            Err(SendError::Disconnected(()))
         );
     }
 
@@ -111,7 +111,7 @@ async fn test() {
 
     assert_eq!(
         await!(SinkExt::send(&mut send, 32)),
-        Err(SendError::Disconnected)
+        Err(SendError::Disconnected(()))
     );
 
     // CLOSING SEND
@@ -149,7 +149,10 @@ async fn test() {
     send_closed(24, &mut send);
     recv_closed(&mut recv);
 
-    assert_eq!(await!(SinkExt::send(&mut send, 32)), Err(SendError::Closed));
+    assert_eq!(
+        await!(SinkExt::send(&mut send, 32)),
+        Err(SendError::Closed(()))
+    );
 
     // CLOSING RECV
     let (mut send, mut recv) = unbounded::<u8>();
@@ -228,13 +231,13 @@ fn send_ok(data: u8, send: &mut Sender) {
 }
 
 fn send_disconnected(data: u8, send: &mut Sender) {
-    assert_eq!(send.send(data), Err(SendError::Disconnected));
+    assert_eq!(send.send(data), Err(SendError::Disconnected(data)));
     assert!(!send.closed);
     assert!(send.disconnected);
 }
 
 fn send_closed(data: u8, send: &mut Sender) {
-    assert_eq!(send.send(data), Err(SendError::Closed));
+    assert_eq!(send.send(data), Err(SendError::Closed(data)));
     assert!(send.closed);
     assert!(!send.disconnected);
 }
