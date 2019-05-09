@@ -47,7 +47,7 @@ impl<D> OnceSender<D> {
     }
 
     /// Sends `data` over the channel, returning `Ok(())` if it
-    /// has been successfully send or either
+    /// has been successfully sent or either
     /// `Err(SendError::Closed)` if the channel has been cancelled
     /// or `Err(SendError::Full)` if a message has already been
     /// sent over it.
