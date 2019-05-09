@@ -8,6 +8,7 @@ pub enum SendError {
 #[derive(PartialEq, Eq, Debug)]
 pub enum ReceiveError {
     Empty,
+    Disconnected,
     Closed,
 }
 
@@ -40,6 +41,10 @@ impl SendError {
 impl ReceiveError {
     pub fn is_empty(&self) -> bool {
         *self == ReceiveError::Empty
+    }
+
+    pub fn is_disconnected(&self) -> bool {
+        *self == ReceiveError::Disconnected
     }
 
     pub fn is_closed(&self) -> bool {
