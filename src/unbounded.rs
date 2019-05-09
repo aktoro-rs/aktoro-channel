@@ -10,12 +10,12 @@ use futures_sink::Sink;
 
 use crate::error::*;
 
+#[derive(Clone, Debug)]
 /// A wrapper around a [`mpsc::UnboundedSender`] that stores
 /// its state after sending data, closing the channel or
 /// disconnecting itself.
 ///
 /// [`mpsc::UnboundedSender`]: https://rust-lang-nursery.github.io/futures-api-docs/0.3.0-alpha.15/futures/channel/mpsc/struct.UnboundedSender.html
-#[derive(Clone, Debug)]
 pub struct UnboundedSender<D> {
     /// Whether the channel has been closed.
     pub closed: bool,
@@ -25,12 +25,12 @@ pub struct UnboundedSender<D> {
     sender: Sender<D>,
 }
 
+#[derive(Debug)]
 /// A wrapper arround a [`mpsc::UnboundedReceiver`] that
 /// stores it state after trying to receive data or closing
 /// the channel.
 ///
 /// [`mpsc::UnboundedReceiver`]: https://rust-lang-nursery.github.io/futures-api-docs/0.3.0-alpha.15/futures/channel/mpsc/struct.UnboundedReceiver.html
-#[derive(Debug)]
 pub struct UnboundedReceiver<D> {
     /// Whether the channel has been closed.
     pub closed: bool,

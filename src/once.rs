@@ -8,11 +8,11 @@ use futures_core::future::Future;
 
 use crate::error::*;
 
+#[derive(Debug)]
 /// A wrapper around a [`oneshot::Sender`] that doesn't consume
 /// itself when sending data and stores it state after doing so.
 ///
 /// [`oneshot::Sender`]: https://rust-lang-nursery.github.io/futures-api-docs/0.3.0-alpha.15/futures_channel/oneshot/struct.Sender.html
-#[derive(Debug)]
 pub struct OnceSender<D> {
     /// Whether data has already been sent over the channel.
     pub sent: bool,
@@ -21,11 +21,11 @@ pub struct OnceSender<D> {
     sender: Option<Sender<D>>,
 }
 
+#[derive(Debug)]
 /// A wrapper arround a [`oneshot::Receiver`] that stores
 /// the received data along with the channel's state.
 ///
 /// [`oneshot::Receiver`]: https://rust-lang-nursery.github.io/futures-api-docs/0.3.0-alpha.15/futures_channel/oneshot/struct.Receiver.html
-#[derive(Debug)]
 pub struct OnceReceiver<D> {
     /// Whether data has been received (same as
     /// `data.is_some()`).
