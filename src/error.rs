@@ -12,6 +12,12 @@ pub enum ReceiveError {
 }
 
 #[derive(PartialEq, Eq, Debug)]
+pub enum DisconnectError {
+    Disconnected,
+    Closed,
+}
+
+#[derive(PartialEq, Eq, Debug)]
 pub enum CloseError {
     Disconnected,
     Closed,
@@ -38,6 +44,16 @@ impl ReceiveError {
 
     pub fn is_closed(&self) -> bool {
         *self == ReceiveError::Closed
+    }
+}
+
+impl DisconnectError {
+    pub fn is_disconnected(&self) -> bool {
+        *self == DisconnectError::Disconnected
+    }
+
+    pub fn is_closed(&self) -> bool {
+        *self == DisconnectError::Closed
     }
 }
 
