@@ -129,10 +129,19 @@ impl<D> Future for OnceReceiver<D> {
     type Output = Result<D, ReceiveError>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<D, ReceiveError>> {
-        if let Some(ref mut receiver) = self.get_mut().receiver {
-            Pin::new(receiver)
-                .poll(cx)
-                .map_err(|_| ReceiveError::Closed)
+        let receiver = self.get_mut();
+        if let Some(ref mut recv) = receiver.receiver {
+            match Pin::new(recv).poll(cx) {
+                Poll::Ready(Ok(data)) => {
+                    receiver.received = true;
+                    Poll::Ready(Ok(data))
+                }
+                Poll::Ready(Err(_)) => {
+                    receiver.cancelled = true;
+                    Poll::Ready(Err(ReceiveError::Closed))
+                }
+                Poll::Pending => Poll::Pending,
+            }
         } else {
             Poll::Ready(Err(ReceiveError::Closed))
         }
