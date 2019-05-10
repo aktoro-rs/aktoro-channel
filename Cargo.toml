@@ -5,3 +5,13 @@ authors = ["Matthieu Le Brazidec <matthieu@lebrazidec.email>"]
 edition = "2018"
 
 [dependencies]
+futures-channel-preview = "0.3.0-alpha.15"
+futures-core-preview    = "0.3.0-alpha.15"
+futures-sink-preview    = "0.3.0-alpha.15"
+
+[dev-dependencies]
+runtime = "0.3.0-alpha.3"
+
+[dev-dependencies.futures-util-preview]
+version  = "0.3.0-alpha.15"
+features = ["async-await", "nightly"]
