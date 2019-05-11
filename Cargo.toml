@@ -1,8 +1,10 @@
 [package]
-name    = "aktoro-channel"
-version = "0.1.0-alpha.1"
-authors = ["Matthieu Le Brazidec <matthieu@lebrazidec.email>"]
-edition = "2018"
+name        = "aktoro-channel"
+description = "Channels for aktoro's internal use."
+version     = "0.1.0-alpha.1"
+license     = "MIT"
+authors     = ["Matthieu Le Brazidec <matthieu@lebrazidec.email>"]
+edition     = "2018"
 
 [dependencies]
 futures-channel-preview = "=0.3.0-alpha.15"
