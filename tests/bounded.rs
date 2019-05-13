@@ -1,4 +1,4 @@
-#![feature(async_await, await_macro)]
+#![feature(async_await)]
 
 use std::task::Poll;
 
@@ -52,8 +52,8 @@ async fn test() {
     send_is_default(&send);
     recv_is_default(&mut recv);
 
-    assert_eq!(await!(SinkExt::send(&mut send, 42)), Ok(()));
-    assert_eq!(await!(SinkExt::send(&mut send, 24)), Ok(()));
+    assert_eq!(SinkExt::send(&mut send, 42).await, Ok(()));
+    assert_eq!(SinkExt::send(&mut send, 24).await, Ok(()));
 
     recv_ok(42, &mut recv);
     recv_ok(24, &mut recv);
@@ -68,8 +68,8 @@ async fn test() {
     send_ok(42, &mut send);
     send_ok(24, &mut send);
 
-    assert_eq!(await!(recv.next()), Some(42));
-    assert_eq!(await!(recv.next()), Some(24));
+    assert_eq!(recv.next().await, Some(42));
+    assert_eq!(recv.next().await, Some(24));
     assert_eq!(poll!(recv.next()), Poll::Pending);
 
     // DISCONNECTING SEND
@@ -95,7 +95,7 @@ async fn test() {
         send_disconnected(12, &mut send);
 
         assert_eq!(
-            await!(SinkExt::send(&mut send, 32)),
+            SinkExt::send(&mut send, 32).await,
             Err(SendError::Disconnected(()))
         );
     }
@@ -131,7 +131,7 @@ async fn test() {
     recv_closed(&mut recv);
 
     assert_eq!(
-        await!(SinkExt::send(&mut send, 32)),
+        SinkExt::send(&mut send, 32).await,
         Err(SendError::Disconnected(()))
     );
 
@@ -171,7 +171,7 @@ async fn test() {
     recv_closed(&mut recv);
 
     assert_eq!(
-        await!(SinkExt::send(&mut send, 32)),
+        SinkExt::send(&mut send, 32).await,
         Err(SendError::Closed(()))
     );
 
@@ -197,7 +197,7 @@ async fn test() {
     send_closed(24, &mut send);
     recv_closed(&mut recv);
 
-    assert_eq!(await!(recv.next()), None);
+    assert_eq!(recv.next().await, None);
 
     // DROPING SEND
     let (mut send, mut recv) = bounded::<u8>(8);
