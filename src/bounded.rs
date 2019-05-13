@@ -10,12 +10,12 @@ use futures_sink::Sink;
 
 use crate::error::*;
 
+#[derive(Debug)]
 /// A wrapper around a [`mpsc::Sender`] that stores its state
 /// after sending data, closing the channel or disconnecting
 /// itself.
 ///
 /// [`mpsc::Sender`]: https://rust-lang-nursery.github.io/futures-api-docs/0.3.0-alpha.15/futures/channel/mpsc/struct.Sender.html
-#[derive(Clone, Debug)]
 pub struct BoundedSender<D> {
     /// The size of the buffer (as it was provided to
     /// [`bounded`])
@@ -30,11 +30,11 @@ pub struct BoundedSender<D> {
     sender: Sender<D>,
 }
 
+#[derive(Debug)]
 /// A wrapper around a [`mpsc::Receiver`] that stores its
 /// state after trying to receive data or closing the channel.
 ///
 /// [`mpsc::Receiver`]: https://rust-lang-nursery.github.io/futures-api-docs/0.3.0-alpha.15/futures/channel/mpsc/struct.Receiver.html
-#[derive(Debug)]
 pub struct BoundedReceiver<D> {
     /// The size of the buffer (as it was provided to
     /// [`bounded`])
@@ -263,6 +263,15 @@ impl<D> Stream for BoundedReceiver<D> {
             Poll::Ready(None)
         } else {
             unreachable!();
+        }
+    }
+}
+
+impl<D> Clone for BoundedSender<D> {
+    fn clone(&self) -> BoundedSender<D> {
+        BoundedSender {
+            sender: self.sender.clone(),
+            ..*self
         }
     }
 }

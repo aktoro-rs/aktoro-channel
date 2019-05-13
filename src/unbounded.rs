@@ -10,7 +10,7 @@ use futures_sink::Sink;
 
 use crate::error::*;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 /// A wrapper around a [`mpsc::UnboundedSender`] that stores
 /// its state after sending data, closing the channel or
 /// disconnecting itself.
@@ -249,6 +249,15 @@ impl<D> Stream for UnboundedReceiver<D> {
             Poll::Ready(None)
         } else {
             unreachable!();
+        }
+    }
+}
+
+impl<D> Clone for UnboundedSender<D> {
+    fn clone(&self) -> UnboundedSender<D> {
+        UnboundedSender {
+            sender: self.sender.clone(),
+            ..*self
         }
     }
 }
