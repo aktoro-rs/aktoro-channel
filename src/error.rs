@@ -64,6 +64,17 @@ impl<D> SendError<D> {
         }
     }
 
+    /// Returns a mutable reference to the data
+    /// that the sender was trying to send over
+    /// the channel.
+    pub fn inner_mut(&mut self) -> &mut D {
+        match self {
+            SendError::Full(data) => data,
+            SendError::Disconnected(data) => data,
+            SendError::Closed(data) => data,
+        }
+    }
+
     /// Returns the data that the sender was trying
     /// to send over the channel.
     pub fn into_inner(self) -> D {
@@ -71,6 +82,19 @@ impl<D> SendError<D> {
             SendError::Full(data) => data,
             SendError::Disconnected(data) => data,
             SendError::Closed(data) => data,
+        }
+    }
+
+    /// Maps a `SendError<D>` to a `SendError<E>` by
+    /// applying a function to the inner value.
+    pub fn map_inner<E, F>(self, op: F) -> SendError<E>
+    where
+        F: FnOnce(D) -> E,
+    {
+        match self {
+            SendError::Full(data) => SendError::Full(op(data)),
+            SendError::Disconnected(data) => SendError::Disconnected(op(data)),
+            SendError::Closed(data) => SendError::Closed(op(data)),
         }
     }
 
