@@ -18,7 +18,7 @@ use crate::error::*;
 pub fn new<D>(buf: usize) -> (Sender<D>, Receiver<D>) {
     let (sender, receiver) = mpsc::channel(buf);
 
-    (Sender::new(buf, send), Receiver::new(buf, receiver))
+    (Sender::new(buf, sender), Receiver::new(buf, receiver))
 }
 
 #[derive(Debug)]
