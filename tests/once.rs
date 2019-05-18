@@ -5,13 +5,13 @@ use std::task::Poll;
 use aktoro_channel::*;
 use futures_util::poll;
 
-type Sender = OnceSender<u8>;
-type Receiver = OnceReceiver<u8>;
+type Sender = once::Sender<u8>;
+type Receiver = once::Receiver<u8>;
 
 #[runtime::test]
 async fn test() {
     // NORMAL
-    let (mut send, mut recv) = once::<u8>();
+    let (mut send, mut recv) = once::new::<u8>();
 
     send_is_default(&send);
     recv_is_default(&mut recv);
@@ -23,7 +23,7 @@ async fn test() {
     recv_closed(&mut recv);
 
     // USING FUTURE
-    let (mut send, mut recv) = once::<u8>();
+    let (mut send, mut recv) = once::new::<u8>();
 
     send_is_default(&send);
     recv_is_default(&mut recv);
@@ -41,7 +41,7 @@ async fn test() {
     recv_closed(&mut recv);
 
     // CLOSING RECV
-    let (mut send, mut recv) = once::<u8>();
+    let (mut send, mut recv) = once::new::<u8>();
 
     send_is_default(&send);
     recv_is_default(&mut recv);
@@ -54,7 +54,7 @@ async fn test() {
     recv_closed(&mut recv);
 
     // DROPING SEND
-    let (send, mut recv) = once::<u8>();
+    let (send, mut recv) = once::new::<u8>();
 
     send_is_default(&send);
     recv_is_default(&mut recv);
@@ -64,7 +64,7 @@ async fn test() {
     recv_closed(&mut recv);
 
     // DROPING RECV
-    let (mut send, mut recv) = once::<u8>();
+    let (mut send, mut recv) = once::new::<u8>();
 
     send_is_default(&send);
     recv_is_default(&mut recv);

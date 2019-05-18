@@ -7,13 +7,13 @@ use futures_util::poll;
 use futures_util::SinkExt;
 use futures_util::StreamExt;
 
-type Sender = UnboundedSender<u8>;
-type Receiver = UnboundedReceiver<u8>;
+type Sender = unbounded::Sender<u8>;
+type Receiver = unbounded::Receiver<u8>;
 
 #[runtime::test]
 async fn test() {
     // NORMAL
-    let (mut send, mut recv) = unbounded::<u8>();
+    let (mut send, mut recv) = unbounded::new::<u8>();
 
     send_is_default(&send);
     recv_is_default(&mut recv);
@@ -26,7 +26,7 @@ async fn test() {
     recv_empty(&mut recv);
 
     // SINK
-    let (mut send, mut recv) = unbounded::<u8>();
+    let (mut send, mut recv) = unbounded::new::<u8>();
 
     send_is_default(&send);
     recv_is_default(&mut recv);
@@ -39,7 +39,7 @@ async fn test() {
     recv_empty(&mut recv);
 
     // STREAM
-    let (mut send, mut recv) = unbounded::<u8>();
+    let (mut send, mut recv) = unbounded::new::<u8>();
 
     send_is_default(&send);
     recv_is_default(&mut recv);
@@ -52,7 +52,7 @@ async fn test() {
     assert_eq!(poll!(recv.next()), Poll::Pending);
 
     // DISCONNECTING SEND
-    let (mut send, mut recv) = unbounded::<u8>();
+    let (mut send, mut recv) = unbounded::new::<u8>();
 
     send_is_default(&send);
     recv_is_default(&mut recv);
@@ -90,7 +90,7 @@ async fn test() {
     recv_empty(&mut recv);
 
     // CLOSING SEND BY DISCONNECTION
-    let (mut send, mut recv) = unbounded::<u8>();
+    let (mut send, mut recv) = unbounded::new::<u8>();
 
     send_is_default(&send);
     recv_is_default(&mut recv);
@@ -115,7 +115,7 @@ async fn test() {
     );
 
     // CLOSING SEND
-    let (mut send, mut recv) = unbounded::<u8>();
+    let (mut send, mut recv) = unbounded::new::<u8>();
 
     send_is_default(&send);
     recv_is_default(&mut recv);
@@ -155,7 +155,7 @@ async fn test() {
     );
 
     // CLOSING RECV
-    let (mut send, mut recv) = unbounded::<u8>();
+    let (mut send, mut recv) = unbounded::new::<u8>();
 
     send_is_default(&send);
     recv_is_default(&mut recv);
@@ -179,7 +179,7 @@ async fn test() {
     assert_eq!(recv.next().await, None);
 
     // DROPING SEND
-    let (mut send, mut recv) = unbounded::<u8>();
+    let (mut send, mut recv) = unbounded::new::<u8>();
 
     send_is_default(&send);
     recv_is_default(&mut recv);
@@ -196,7 +196,7 @@ async fn test() {
     assert!(recv.closed);
 
     // DROPING RECV
-    let (mut send, mut recv) = unbounded::<u8>();
+    let (mut send, mut recv) = unbounded::new::<u8>();
 
     send_is_default(&send);
     recv_is_default(&mut recv);

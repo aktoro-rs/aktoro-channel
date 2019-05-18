@@ -2,13 +2,24 @@ use std::pin::Pin;
 use std::task::Context;
 use std::task::Poll;
 
-use futures_channel::mpsc::Receiver;
-use futures_channel::mpsc::Sender;
+use futures_channel::mpsc;
+use futures_channel::mpsc::Receiver as FutReceiver;
+use futures_channel::mpsc::Sender as FutSender;
 use futures_core::stream::FusedStream;
 use futures_core::stream::Stream;
 use futures_sink::Sink;
 
 use crate::error::*;
+
+/// Creates a new bounded channel (see [`futures-channel`'s
+/// documentation]).
+///
+/// [`futures-channel`'s documentation]: https://docs.rs/futures-channel-preview/0.3.0-alpha.16/futures_channel/mpsc/fn.channel.html
+pub fn new<D>(buf: usize) -> (Sender<D>, Receiver<D>) {
+    let (send, receiver) = mpsc::channel(buf);
+
+    (Sender::new(buf, send), Receiver::new(buf, receiver))
+}
 
 #[derive(Debug)]
 /// A wrapper around a [`mpsc::Sender`] that stores its state
@@ -16,7 +27,7 @@ use crate::error::*;
 /// itself.
 ///
 /// [`mpsc::Sender`]: https://rust-lang-nursery.github.io/futures-api-docs/0.3.0-alpha.15/futures/channel/mpsc/struct.Sender.html
-pub struct BoundedSender<D> {
+pub struct Sender<D> {
     /// The size of the buffer (as it was provided to
     /// [`bounded`])
     ///
@@ -27,7 +38,7 @@ pub struct BoundedSender<D> {
     /// Whether the sender has disconnected itself from the
     /// channel.
     pub disconnected: bool,
-    sender: Sender<D>,
+    sender: FutSender<D>,
 }
 
 #[derive(Debug)]
@@ -35,7 +46,7 @@ pub struct BoundedSender<D> {
 /// state after trying to receive data or closing the channel.
 ///
 /// [`mpsc::Receiver`]: https://rust-lang-nursery.github.io/futures-api-docs/0.3.0-alpha.15/futures/channel/mpsc/struct.Receiver.html
-pub struct BoundedReceiver<D> {
+pub struct Receiver<D> {
     /// The size of the buffer (as it was provided to
     /// [`bounded`])
     ///
@@ -43,12 +54,12 @@ pub struct BoundedReceiver<D> {
     pub buf: usize,
     /// Whether the channel has been closed.
     pub closed: bool,
-    receiver: Option<Receiver<D>>,
+    receiver: Option<FutReceiver<D>>,
 }
 
-impl<D> BoundedSender<D> {
-    pub(crate) fn new(buf: usize, sender: Sender<D>) -> BoundedSender<D> {
-        BoundedSender {
+impl<D> Sender<D> {
+    pub(crate) fn new(buf: usize, sender: FutSender<D>) -> Sender<D> {
+        Sender {
             buf,
             closed: false,
             disconnected: false,
@@ -129,9 +140,9 @@ impl<D> BoundedSender<D> {
     }
 }
 
-impl<D> BoundedReceiver<D> {
-    pub(crate) fn new(buf: usize, receiver: Receiver<D>) -> BoundedReceiver<D> {
-        BoundedReceiver {
+impl<D> Receiver<D> {
+    pub(crate) fn new(buf: usize, receiver: FutReceiver<D>) -> Receiver<D> {
+        Receiver {
             buf,
             closed: false,
             receiver: Some(receiver),
@@ -175,9 +186,9 @@ impl<D> BoundedReceiver<D> {
     }
 }
 
-impl<D> Unpin for BoundedReceiver<D> {}
+impl<D> Unpin for Receiver<D> {}
 
-impl<D> Sink<D> for BoundedSender<D> {
+impl<D> Sink<D> for Sender<D> {
     // FIXME: -`()` +`D` (the issue being that `poll_ready`,
     //   `poll_flush` and `poll_close` can't return `D` since
     //   they don't get any data in the first place).
@@ -240,13 +251,13 @@ impl<D> Sink<D> for BoundedSender<D> {
     }
 }
 
-impl<D> FusedStream for BoundedReceiver<D> {
+impl<D> FusedStream for Receiver<D> {
     fn is_terminated(&self) -> bool {
         self.closed
     }
 }
 
-impl<D> Stream for BoundedReceiver<D> {
+impl<D> Stream for Receiver<D> {
     type Item = D;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<D>> {
@@ -267,9 +278,9 @@ impl<D> Stream for BoundedReceiver<D> {
     }
 }
 
-impl<D> Clone for BoundedSender<D> {
-    fn clone(&self) -> BoundedSender<D> {
-        BoundedSender {
+impl<D> Clone for Sender<D> {
+    fn clone(&self) -> Sender<D> {
+        Sender {
             sender: self.sender.clone(),
             ..*self
         }

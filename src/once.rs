@@ -2,23 +2,34 @@ use std::pin::Pin;
 use std::task::Context;
 use std::task::Poll;
 
-use futures_channel::oneshot::Receiver;
-use futures_channel::oneshot::Sender;
+use futures_channel::oneshot;
+use futures_channel::oneshot::Receiver as FutReceiver;
+use futures_channel::oneshot::Sender as FutSender;
 use futures_core::future::Future;
 
 use crate::error::*;
+
+/// Creates a new single use channel (see [`futures-channel`'s
+/// documentation]).
+///
+/// [`futures-channel`'s documentation]: https://docs.rs/futures-channel-preview/0.3.0-alpha.16/futures_channel/oneshot/index.html
+pub fn new<D>() -> (Sender<D>, Receiver<D>) {
+    let (sender, receiver) = oneshot::channel();
+
+    (Sender::new(sender), Receiver::new(receiver))
+}
 
 #[derive(Debug)]
 /// A wrapper around a [`oneshot::Sender`] that doesn't consume
 /// itself when sending data and stores it state after doing so.
 ///
 /// [`oneshot::Sender`]: https://rust-lang-nursery.github.io/futures-api-docs/0.3.0-alpha.15/futures_channel/oneshot/struct.Sender.html
-pub struct OnceSender<D> {
+pub struct Sender<D> {
     /// Whether data has already been sent over the channel.
     pub sent: bool,
     /// Whether the channel has been cancelled.
     pub cancelled: bool,
-    sender: Option<Sender<D>>,
+    sender: Option<FutSender<D>>,
 }
 
 #[derive(Debug)]
@@ -26,7 +37,7 @@ pub struct OnceSender<D> {
 /// the received data along with the channel's state.
 ///
 /// [`oneshot::Receiver`]: https://rust-lang-nursery.github.io/futures-api-docs/0.3.0-alpha.15/futures_channel/oneshot/struct.Receiver.html
-pub struct OnceReceiver<D> {
+pub struct Receiver<D> {
     /// Whether data has been received (same as
     /// `data.is_some()`).
     pub received: bool,
@@ -34,12 +45,12 @@ pub struct OnceReceiver<D> {
     pub closed: bool,
     /// Whether the channel has been cancelled.
     pub cancelled: bool,
-    receiver: Option<Receiver<D>>,
+    receiver: Option<FutReceiver<D>>,
 }
 
-impl<D> OnceSender<D> {
-    pub(crate) fn new(sender: Sender<D>) -> OnceSender<D> {
-        OnceSender {
+impl<D> Sender<D> {
+    pub(crate) fn new(sender: FutSender<D>) -> Sender<D> {
+        Sender {
             sent: false,
             cancelled: false,
             sender: Some(sender),
@@ -73,9 +84,9 @@ impl<D> OnceSender<D> {
     }
 }
 
-impl<D> OnceReceiver<D> {
-    pub(crate) fn new(receiver: Receiver<D>) -> OnceReceiver<D> {
-        OnceReceiver {
+impl<D> Receiver<D> {
+    pub(crate) fn new(receiver: FutReceiver<D>) -> Receiver<D> {
+        Receiver {
             received: false,
             closed: false,
             cancelled: false,
@@ -122,10 +133,10 @@ impl<D> OnceReceiver<D> {
     }
 }
 
-impl<D> Unpin for OnceSender<D> {}
-impl<D> Unpin for OnceReceiver<D> {}
+impl<D> Unpin for Sender<D> {}
+impl<D> Unpin for Receiver<D> {}
 
-impl<D> Future for OnceReceiver<D> {
+impl<D> Future for Receiver<D> {
     type Output = Result<D, ReceiveError>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<D, ReceiveError>> {
