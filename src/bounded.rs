@@ -16,7 +16,7 @@ use crate::error::*;
 ///
 /// [`futures-channel`'s documentation]: https://docs.rs/futures-channel-preview/0.3.0-alpha.16/futures_channel/mpsc/fn.channel.html
 pub fn new<D>(buf: usize) -> (Sender<D>, Receiver<D>) {
-    let (send, receiver) = mpsc::channel(buf);
+    let (sender, receiver) = mpsc::channel(buf);
 
     (Sender::new(buf, send), Receiver::new(buf, receiver))
 }
