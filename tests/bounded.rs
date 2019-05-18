@@ -7,13 +7,13 @@ use futures_util::poll;
 use futures_util::SinkExt;
 use futures_util::StreamExt;
 
-type Sender = BoundedSender<u8>;
-type Receiver = BoundedReceiver<u8>;
+type Sender = bounded::Sender<u8>;
+type Receiver = bounded::Receiver<u8>;
 
 #[runtime::test]
 async fn test() {
     // NORMAL
-    let (mut send, mut recv) = bounded::<u8>(8);
+    let (mut send, mut recv) = bounded::new::<u8>(8);
 
     send_is_default(&send);
     recv_is_default(&mut recv);
@@ -26,7 +26,7 @@ async fn test() {
     recv_empty(&mut recv);
 
     // FULL
-    let (mut send, mut recv) = bounded::<u8>(1);
+    let (mut send, mut recv) = bounded::new::<u8>(1);
     // NOTE: in `future_channel`, bounded channels have a capacity
     //   of `buf` (in this case 1), plus the number of senders
 
@@ -47,7 +47,7 @@ async fn test() {
     recv_empty(&mut recv);
 
     // SINK
-    let (mut send, mut recv) = bounded::<u8>(8);
+    let (mut send, mut recv) = bounded::new::<u8>(8);
 
     send_is_default(&send);
     recv_is_default(&mut recv);
@@ -60,7 +60,7 @@ async fn test() {
     recv_empty(&mut recv);
 
     // STREAM
-    let (mut send, mut recv) = bounded::<u8>(8);
+    let (mut send, mut recv) = bounded::new::<u8>(8);
 
     send_is_default(&send);
     recv_is_default(&mut recv);
@@ -73,7 +73,7 @@ async fn test() {
     assert_eq!(poll!(recv.next()), Poll::Pending);
 
     // DISCONNECTING SEND
-    let (mut send, mut recv) = bounded::<u8>(8);
+    let (mut send, mut recv) = bounded::new::<u8>(8);
 
     send_is_default(&send);
     recv_is_default(&mut recv);
@@ -111,7 +111,7 @@ async fn test() {
     recv_empty(&mut recv);
 
     // CLOSING SEND BY DISCONNECTION
-    let (mut send, mut recv) = bounded::<u8>(8);
+    let (mut send, mut recv) = bounded::new::<u8>(8);
 
     send_is_default(&send);
     recv_is_default(&mut recv);
@@ -136,7 +136,7 @@ async fn test() {
     );
 
     // CLOSING SEND
-    let (mut send, mut recv) = bounded::<u8>(8);
+    let (mut send, mut recv) = bounded::new::<u8>(8);
 
     send_is_default(&send);
     recv_is_default(&mut recv);
@@ -176,7 +176,7 @@ async fn test() {
     );
 
     // CLOSING RECV
-    let (mut send, mut recv) = bounded::<u8>(8);
+    let (mut send, mut recv) = bounded::new::<u8>(8);
 
     send_is_default(&send);
     recv_is_default(&mut recv);
@@ -200,7 +200,7 @@ async fn test() {
     assert_eq!(recv.next().await, None);
 
     // DROPING SEND
-    let (mut send, mut recv) = bounded::<u8>(8);
+    let (mut send, mut recv) = bounded::new::<u8>(8);
 
     send_is_default(&send);
     recv_is_default(&mut recv);
@@ -217,7 +217,7 @@ async fn test() {
     assert!(recv.closed);
 
     // DROPING RECV
-    let (mut send, mut recv) = bounded::<u8>(8);
+    let (mut send, mut recv) = bounded::new::<u8>(8);
 
     send_is_default(&send);
     recv_is_default(&mut recv);

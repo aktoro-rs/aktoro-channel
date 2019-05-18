@@ -2,44 +2,55 @@ use std::pin::Pin;
 use std::task::Context;
 use std::task::Poll;
 
-use futures_channel::mpsc::UnboundedReceiver as Receiver;
-use futures_channel::mpsc::UnboundedSender as Sender;
+use futures_channel::mpsc;
+use futures_channel::mpsc::UnboundedReceiver as FutReceiver;
+use futures_channel::mpsc::UnboundedSender as FutSender;
 use futures_core::stream::FusedStream;
 use futures_core::stream::Stream;
 use futures_sink::Sink;
 
 use crate::error::*;
 
-#[derive(Debug)]
-/// A wrapper around a [`mpsc::UnboundedSender`] that stores
-/// its state after sending data, closing the channel or
-/// disconnecting itself.
+/// Creates a new unbounded channel (see [`futures-channel`'s
+/// documentation]).
 ///
-/// [`mpsc::UnboundedSender`]: https://rust-lang-nursery.github.io/futures-api-docs/0.3.0-alpha.15/futures/channel/mpsc/struct.UnboundedSender.html
-pub struct UnboundedSender<D> {
+/// [`futures-channel`'s documentation]: https://docs.rs/futures-channel-preview/0.3.0-alpha.16/futures_channel/mpsc/fn.unbounded.html
+pub fn new<D>() -> (Sender<D>, Receiver<D>) {
+    let (sender, receiver) = mpsc::unbounded();
+
+    (Sender::new(sender), Receiver::new(receiver))
+}
+
+#[derive(Debug)]
+/// A wrapper around a [`futures::mpsc::Sender`] that
+/// stores its state after sending data, closing the
+/// channel or disconnecting itself.
+///
+/// [`futures::mpsc::Sender`]: https://docs.rs/futures-channel-preview/0.3.0-alpha.16/futures_channel/mpsc/struct.Sender.html
+pub struct Sender<D> {
     /// Whether the channel has been closed.
     pub closed: bool,
     /// Whether the sender has diconnected itself from the
     /// channel.
     pub disconnected: bool,
-    sender: Sender<D>,
+    sender: FutSender<D>,
 }
 
 #[derive(Debug)]
-/// A wrapper arround a [`mpsc::UnboundedReceiver`] that
+/// A wrapper arround a [`futures::mpsc::Receiver`] that
 /// stores it state after trying to receive data or closing
 /// the channel.
 ///
-/// [`mpsc::UnboundedReceiver`]: https://rust-lang-nursery.github.io/futures-api-docs/0.3.0-alpha.15/futures/channel/mpsc/struct.UnboundedReceiver.html
-pub struct UnboundedReceiver<D> {
+/// [`futures::mpsc::Receiver`]: https://docs.rs/futures-channel-preview/0.3.0-alpha.16/futures_channel/mpsc/struct.Receiver.html
+pub struct Receiver<D> {
     /// Whether the channel has been closed.
     pub closed: bool,
-    receiver: Option<Receiver<D>>,
+    receiver: Option<FutReceiver<D>>,
 }
 
-impl<D> UnboundedSender<D> {
-    pub(crate) fn new(sender: Sender<D>) -> UnboundedSender<D> {
-        UnboundedSender {
+impl<D> Sender<D> {
+    pub(crate) fn new(sender: FutSender<D>) -> Sender<D> {
+        Sender {
             closed: false,
             disconnected: false,
             sender,
@@ -116,9 +127,9 @@ impl<D> UnboundedSender<D> {
     }
 }
 
-impl<D> UnboundedReceiver<D> {
-    pub(crate) fn new(receiver: Receiver<D>) -> UnboundedReceiver<D> {
-        UnboundedReceiver {
+impl<D> Receiver<D> {
+    pub(crate) fn new(receiver: FutReceiver<D>) -> Receiver<D> {
+        Receiver {
             closed: false,
             receiver: Some(receiver),
         }
@@ -161,9 +172,9 @@ impl<D> UnboundedReceiver<D> {
     }
 }
 
-impl<D> Unpin for UnboundedReceiver<D> {}
+impl<D> Unpin for Receiver<D> {}
 
-impl<D> Sink<D> for UnboundedSender<D> {
+impl<D> Sink<D> for Sender<D> {
     // FIXME: -`()` +`D` (the issue being that `poll_ready`,
     //   `poll_flush` and `poll_close` can't return `D` since
     //   they don't get any data in the first place).
@@ -226,13 +237,13 @@ impl<D> Sink<D> for UnboundedSender<D> {
     }
 }
 
-impl<D> FusedStream for UnboundedReceiver<D> {
+impl<D> FusedStream for Receiver<D> {
     fn is_terminated(&self) -> bool {
         self.closed
     }
 }
 
-impl<D> Stream for UnboundedReceiver<D> {
+impl<D> Stream for Receiver<D> {
     type Item = D;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<D>> {
@@ -253,9 +264,9 @@ impl<D> Stream for UnboundedReceiver<D> {
     }
 }
 
-impl<D> Clone for UnboundedSender<D> {
-    fn clone(&self) -> UnboundedSender<D> {
-        UnboundedSender {
+impl<D> Clone for Sender<D> {
+    fn clone(&self) -> Sender<D> {
+        Sender {
             sender: self.sender.clone(),
             ..*self
         }
